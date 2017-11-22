@@ -6,6 +6,7 @@ import cl.duoc.dej.tienda.service.CategoriaService;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.ejb.EJB;
@@ -14,6 +15,10 @@ import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import javax.validation.ConstraintViolation;
+import javax.validation.Validation;
+import javax.validation.Validator;
+import javax.validation.ValidatorFactory;
 
 @WebServlet(name = "CategoriaServlet", urlPatterns = {"/categorias"})
 public class CategoriaServlet extends HttpServlet {
@@ -25,7 +30,7 @@ public class CategoriaServlet extends HttpServlet {
     public final String JSP_CREAR = "/WEB-INF/jsp/categoria/crear.jsp";
 
     Logger logger = Logger.getLogger(this.getClass().getSimpleName());
-    
+
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
         String operacion = request.getParameter("op");
@@ -66,11 +71,31 @@ public class CategoriaServlet extends HttpServlet {
     }
 
     private void postCrear(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+        List<String> errores = new ArrayList<>();
+        List<String> mensajes = new ArrayList<>();
+        String error = "";
+        String mensaje = "";
+
         String nombre = request.getParameter("categoria");
         String descripcion = request.getParameter("descripcion");
         Categoria categoria = new Categoria(nombre, descripcion);
-        categoria = categoriaService.crearCategoria(categoria);
-        request.setAttribute("mensajes", new String[]{String.format("Categoría %s creada correctamente con ID %s", categoria.getNombre(), categoria.getId())});
+
+        ValidatorFactory factory = Validation.buildDefaultValidatorFactory();
+        Validator validator = factory.getValidator();
+        Set<ConstraintViolation<Categoria>> listaValidaciones = validator.validate(categoria);
+        for (ConstraintViolation<Categoria> v : listaValidaciones) {
+            errores.add(v.getPropertyPath().toString() + ":" + v.getMessage());
+        }
+
+        if (errores.size() > 0) {            
+            request.setAttribute("errores", errores);
+        } else {
+            categoria = categoriaService.crearCategoria(categoria);
+            mensaje = String.format("Categoría %s creada correctamente con ID %s", categoria.getNombre(), categoria.getId());
+            mensajes.add(mensaje);
+            request.setAttribute("mensajes", mensajes);
+        }
+
         request.getRequestDispatcher(JSP_CREAR).forward(request, response);
     }
 
