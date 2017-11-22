@@ -2,7 +2,9 @@
 
 <div class="container">
     <footer>
+        <!--
         <a href="setup">setup</a>
+        -->
     </footer>
 </div>
 
